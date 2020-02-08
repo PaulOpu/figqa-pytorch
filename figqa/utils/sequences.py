@@ -32,6 +32,7 @@ def dynamic_rnn(rnn_model, seq_input, seq_lens, initial_state=None):
         hx = (state, state)
     else:
         hx = None
+    rnn_model.flatten_parameters()
     outputs, _ = rnn_model(seq_input, hx)
     rnn_hidden_size = outputs.size(2)
 

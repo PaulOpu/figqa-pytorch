@@ -8,7 +8,12 @@ import numpy as np
 from nltk.tokenize import word_tokenize
 from PIL import Image
 
-from figqa.utils.dataset import ques_to_tensor
+#from figqa.utils.datasets import ques_to_tensor
+def ques_to_tensor(ques, word2ind):
+    result = np.zeros(args.max_ques_len, dtype='uint32')
+    for i, w in enumerate(ques):
+        result[i] = word2ind[w]
+    return result
 
 def tokenize_qas(qa_pairs):
     for qa_pair in qa_pairs:
@@ -37,6 +42,7 @@ if __name__ == "__main__":
         help='Max length of questions')
     args = parser.parse_args()
 
+    print("load")
     # 1: load QA pairs and extract vocab
     qa_pairs = {}
     vocab = set()
@@ -50,6 +56,7 @@ if __name__ == "__main__":
     vocab = sorted(list(vocab))
     vocab = ['NULL', '<START>', '<END>'] + vocab
 
+    print("save")
     # 2: save vocab
     os.makedirs(args.output_dir, exist_ok=True)
     vocab_fname = pth.join(args.output_dir, 'vocab.json')
@@ -60,6 +67,7 @@ if __name__ == "__main__":
             'word2ind': word2ind
         }, f)
 
+    print("save")
     # 3: save questions and answers as tensors (without start and end tokens)
     for split in splits:
         os.makedirs(pth.join(args.output_dir, split), exist_ok=True)
