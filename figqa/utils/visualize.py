@@ -23,10 +23,19 @@ class VisdomVisualize():
                     server = config['server']
                 if 'port' in config:
                     port = int(config['port'])
+        i = 1
+        while pth.exists("/workspace/figqa-pytorch/data/logs/"+str(i)):
+            i += 1 
+        
         self.viz = visdom.Visdom(
             port=port,
             env=env_name,
             server=server,
+            #username="",
+            #password=""
+            log_to_filename="/workspace/figqa-pytorch/data/logs/rn"+str(i)
+            #base_url="/tools/8894",
+            #use_incoming_socket=True
         )
         self.wins = {}
 
@@ -54,11 +63,12 @@ class VisdomVisualize():
             xlabel: Label for x-axis (default: # Iterations)
         '''
         if key in self.wins.keys():
-            self.viz.updateTrace(
+            self.viz.line(
                 X=np.array([x]),
                 Y=np.array([y]),
                 win=self.wins[key],
-                name=line_name
+                name=line_name,
+                update="append"
             )
         else:
             self.wins[key] = self.viz.line(

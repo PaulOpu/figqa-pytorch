@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+
 import figqa.utils.sequences as sequences
 
 class RelNet(nn.Module):
@@ -41,7 +42,7 @@ class RelNet(nn.Module):
         # image embedding
         if self.kind in ['cnn+lstm', 'rn']:
             img_net_dim = model_args.get('img_net_dim', 64)
-            self.img_net = nn.Sequential(
+            """ self.img_net = nn.Sequential(
                 nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1),
                 nn.BatchNorm2d(64),
                 act_f,
@@ -57,8 +58,43 @@ class RelNet(nn.Module):
                 nn.Conv2d(img_net_dim, 64, kernel_size=3, stride=2, padding=1),
                 nn.BatchNorm2d(64),
                 act_f,
+            ) """
+
+            #Chargrid: Img Net
+            self.img_net = nn.Sequential(
+                nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(64),
+                act_f,
+                nn.Conv2d(64, img_net_dim, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(img_net_dim),
+                act_f
             )
-            img_net_out_dim = 64
+
+            # Chargrid: OCR Embedding
+            self.chargrid_net = nn.Sequential(
+                nn.Conv2d(39, 64, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(64),
+                act_f,
+                nn.Conv2d(64, img_net_dim, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(img_net_dim),
+                act_f
+            )
+
+            #Chargrid: Img_Net + Chargrid Embedding
+            self.entitygrid_net = nn.Sequential(
+                nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(128),
+                act_f,
+                nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(128),
+                act_f,
+                nn.Conv2d(128, img_net_dim, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(img_net_dim),
+                act_f,
+            )
+            img_net_out_dim = 64            
+
+
         # late fusion classifier
         if self.kind == 'cnn+lstm':
             self.cnn_lstm_classifier = nn.Sequential(
@@ -167,12 +203,15 @@ class RelNet(nn.Module):
         img = batch['img']
         ques_len = batch['question_len']
         ques_emb = self.qembedding(batch['question'])
+        chargrid = batch['chargrid']
+        self.qlstm.flatten_parameters()
         ques = sequences.dynamic_rnn(self.qlstm, ques_emb, ques_len)
         # answer using questions only
         if self.kind == 'lstm':
             scores = self.qclassifier(ques)
             return F.log_softmax(scores, dim=1)
         img = self.img_net(img)
+        chargrid = self.chargrid_net(chargrid)
         # answer using questions + images; no relational structure
         if self.kind == 'cnn+lstm':
             ipt = torch.cat([ques, img.view(len(img), -1)], dim=1)
@@ -181,8 +220,13 @@ class RelNet(nn.Module):
         # RN implementation treating pixels as objects
         # (f and g as in the RN paper)
         assert self.kind == 'rn'
+
+        #TODO: Concat img and chargrid and conv
+        entitygrid = torch.cat([img,chargrid],dim=1)
+        entitygrid = self.entitygrid_net(entitygrid)
         context = 0
-        pairs = self.img_to_pairs(img, ques)
+        pairs = self.img_to_pairs(entitygrid, ques)
+        #pairs = self.img_to_pairs(img, ques)
         N, N_pairs, _ = pairs.size()
         context = self.g(pairs.view(N*N_pairs, -1))
         context = context.view(N, N_pairs, -1).mean(dim=1)

@@ -62,36 +62,37 @@ def runcmd(cmd):
 
 #######################################
 # Config
-figureqa_dir = 'data/figureqa/'
-figureqa_pre = 'data/figureqa_pre/'
+figureqa_dir = '/workspace/resized_figureqa/'
+figureqa_pre = '/workspace/resized_figureqa/preprocessed'
 
 #######################################
 # Pre-processing
-runcmd('python scripts/prepro_text.py \
-            --figqa-dir {figureqa_dir} \
-            --output-dir {figureqa_pre}'.format(**locals()))
+# runcmd('python scripts/prepro_text.py \
+#            --figqa-dir {figureqa_dir} \
+#            --output-dir {figureqa_pre}'.format(**locals()))
 
 #######################################
 # Train
-#runcmd('python train.py \
-#        --figqa-dir {figureqa_dir} \
-#        --figqa-pre {figureqa_pre} \
-#        --model rn \
-#        --env-name figqa-rn \
-#        --ques-num-layers 1 \
-#        --img-net-dim 64 \
-#        --rn-g-dim 256 \
-#        --ques-rnn-hidden-dim 256 \
-#        --batch-size 128 \
-#        --shuffle-train 1 \
-#        --lr 0.00002 \
-#        --lr-decay 1.0'.format(**locals()))
+runcmd('python /workspace/figqa-pytorch/train.py \
+        --figqa-dir {figureqa_dir} \
+        --figqa-pre {figureqa_pre} \
+        --model rn \
+        --env-name figqa-rn \
+        --ques-num-layers 1 \
+        --img-net-dim 64 \
+        --rn-g-dim 256 \
+        --ques-rnn-hidden-dim 256 \
+        --batch-size 64 \
+        --shuffle-train 1 \
+        --lr 0.00002 \
+        --workers 4 \
+        --lr-decay 1.0'.format(**locals()))
 
 #######################################
 # Evaluate
-#checkpoint = 'data/checkpoints/<time>/model_ep<epoch>.pt'
-#short_name = 'rn'
-#for split in ['train1', 'validation1', 'validation2']:
+# checkpoint = 'data/checkpoints/<time>/model_ep<epoch>.pt'
+# short_name = 'rn'
+# for split in ['train1', 'validation1', 'validation2']:
 #    runcmd('python evaluate.py \
 #            --val-split {split} \
 #            --figqa-dir {figureqa_dir} \

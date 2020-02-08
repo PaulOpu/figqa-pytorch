@@ -5,12 +5,22 @@ import h5py
 from PIL import Image
 import PIL.ImageOps as ImageOps
 
+import time
+import pickle
+from sklearn.feature_extraction.text import CountVectorizer
+
+
+
 import torch
 from torch.autograd import Variable
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
 from figqa.utils.sequences import NULL
+
+import sys
+sys.path.append('/workspace/st_vqa_entitygrid/solution/')
+from figureqa import create_bbox_canvas,char_split
 
 def batch_iter(dataloader, args, volatile=False):
     '''Generate appropriately transformed batches.'''
@@ -20,8 +30,11 @@ def batch_iter(dataloader, args, volatile=False):
                 continue
             if args.cuda:
                 # assumed cpu tensors are in pinned memory
-                batch[k] = batch[k].cuda(async=True)
-            batch[k] = Variable(batch[k], volatile=volatile)
+                #batch[k] = batch[k].cuda(async=False)
+                batch[k] = batch[k].cuda(non_blocking=True)
+            batch[k] = Variable(batch[k])
+            #else:
+            #    batch[k] = Variable(batch[k])
         yield idx, batch
 
 def ques_to_tensor(ques, word2ind):
@@ -69,6 +82,19 @@ class FigQADataset(Dataset):
                             transforms.ToTensor(),
                         ])
 
+        self.chargrid_transpose = transforms.Compose([
+                            transforms.ToTensor(),
+                        ])
+
+        #TODO: load annotations
+        anno_path = pth.join(dname, split,"img_index2annotation.json")
+        self.annotations = json.load(open(anno_path,"r"))
+
+        #TODO: load vectorizer
+        vec_path = pth.join(dname,"bag_of_characters.pkl")
+        self.vectorizer = pickle.load(open(vec_path, "rb"))
+
+
     @staticmethod
     def resize(img):
         '''Resize img so the largest dimension is 256'''
@@ -96,6 +122,7 @@ class FigQADataset(Dataset):
         return img
 
     def __getitem__(self, index):
+        #start = time.time()
         # question-answer info
         question = self.questions[index]
         answer = self.answers[index]
@@ -104,11 +131,19 @@ class FigQADataset(Dataset):
         qtype = self.qa_pairs_json[index]['question_id']
 
         # load image
-        fname = '{}.png'.format(image_idx)
-        path = pth.join(self.dname, self.split, 'png', fname)
-        img = Image.open(path).convert('RGB')
-        img = self.transform(img)
+        #fname = '{}.png'.format(image_idx)
+        #path = pth.join(self.dname, self.split, 'png', fname)
+        
+        fname = '{}.pt'.format(image_idx)
+        path = pth.join(self.dname, self.split, 'img_tensors', fname)
+        img = torch.load(path)
+        #img = Image.open(path).convert('RGB')
+        #img = self.transform(img)
 
+        #Create CharGrid
+        chargrid = create_bbox_canvas(
+           self.vectorizer,self.annotations[str(image_idx)])
+        chargrid = self.chargrid_transpose(chargrid).type(torch.float32)
         return {
             'img': img,
             'img_path': path,
@@ -116,6 +151,7 @@ class FigQADataset(Dataset):
             'question_len': question_len,
             'qtype': qtype,
             'answer': answer,
+            'chargrid':chargrid
         }
 
     def __len__(self):

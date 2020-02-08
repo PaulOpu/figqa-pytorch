@@ -7,6 +7,8 @@ from collections import defaultdict
 import gc
 
 import numpy as np
+import tqdm
+import time
 
 import torch
 import torch.optim
@@ -31,9 +33,9 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
     # loss
     alpha = .70
     if running_loss is None:
-        running_loss = loss.data[0]
+        running_loss = loss.data.item()#[0]
     else:
-        running_loss = alpha * running_loss + (1 - alpha) * loss.data[0]
+        running_loss = alpha * running_loss + (1 - alpha) * loss.data.item()
     viz.append_data(iter_idx, running_loss, 'Loss', 'running loss')
 
     # accuracy
@@ -48,9 +50,9 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
     # accuracy by question type
     for qtype, meta in enumerate(utils.QTYPE_ID_TO_META):
         qtype_mask = (batch['qtype'] == qtype)
-        if qtype_mask.sum().data[0] != 0:
+        if qtype_mask.sum().data.item() != 0:
             qtype_correct = correct[qtype_mask]
-            qtype_acc = qtype_correct.sum().data[0] / qtype_correct.size(0)
+            qtype_acc = qtype_correct.sum().data.item() / qtype_correct.size(0)
             running_accs[qtype] = 0.20 * qtype_acc + \
                                   (1 - 0.20) * running_accs[qtype]
         viz.append_data(iter_idx, running_accs[qtype],
@@ -74,6 +76,7 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
     val_accs = []
     val_correct_by_qtype = {qtype: [] for qtype, _ in
                                             enumerate(utils.QTYPE_ID_TO_META)}
+
     for _, val_batch in islice(batch_iter(val_dataloader, args, volatile=True), val_batches):
         val_pred = model(val_batch)
         val_loss = criterion(val_pred, val_batch['answer']).cpu().data.numpy()
@@ -85,7 +88,7 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
         # accuracy by question type
         for qtype, meta in enumerate(utils.QTYPE_ID_TO_META):
             qtype_mask = (val_batch['qtype'] == qtype)
-            if qtype_mask.sum().data[0] == 0:
+            if qtype_mask.sum().data.item() == 0:
                 continue
             qtype_correct = val_correct[qtype_mask]
             val_correct_by_qtype[qtype].append(qtype_correct)
@@ -95,7 +98,7 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
     viz.append_data(iter_idx, np.mean(val_accs), 'Acc', 'val acc')
     acc_per_chart_type = defaultdict(lambda: [])
     for qtype, meta in enumerate(utils.QTYPE_ID_TO_META):
-        correct = sum(c.sum().data[0] for c in val_correct_by_qtype[qtype])
+        correct = sum(c.sum().data.item() for c in val_correct_by_qtype[qtype])
         total = sum(c.size(0) for c in val_correct_by_qtype[qtype])
         qtype_acc = correct / total if total > 0 else 0.5
         viz.append_data(iter_idx, qtype_acc, 'Val Question Type Acc',
@@ -168,20 +171,41 @@ def main(args):
         # TODO: understand when/why automatic garbage collection slows down
         # the train loop
         gc.disable()
-        for local_iter_idx, batch in batch_iter(dataloader, args):
+        data_time = time.time()
+        
+        for local_iter_idx, batch in tqdm.tqdm(batch_iter(dataloader, args)):
+            #print("Data Load",time.time()-data_time)
+            #times = [time.time()] 
+
             iter_idx = local_iter_idx + epoch * len(dataloader)
 
             # forward + update
             optimizer.zero_grad()
+            
             pred = model(batch)
+            #times.append(time.time())
             loss = criterion(pred, batch['answer'])
+            #times.append(time.time())
+            #print("backprop")
             loss.backward()
+            #times.append(time.time())
             optimizer.step()
-
+            #times.append(time.time())
             # visualize, log, checkpoint
+            #print("visualize")
             log_stuff(**locals())
+            #times.append(time.time())
+            #for idx,timing in enumerate(["FW","Loss","Backw","Opt","log"]):
+                #print(timing,times[idx+1]-times[idx])
+            data_time = time.time()
+
+            #if iter_idx > 100:
+            #    break
         gc.enable()
+        return
 
 
 if __name__ == '__main__':
+    def char_split(document):
+        return list(document.lower())
     main(figqa.options.parse_arguments())
