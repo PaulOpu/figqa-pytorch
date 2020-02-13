@@ -64,7 +64,7 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
     t_diff = end_t - start_t
     log_line = ('[{time_stamp}][Ep: {epoch:0>2d}][Iter: {iter_idx}]'
                 '[Time: {t_diff:.2f}][Loss: {running_loss:.4f}]')
-    print(log_line.format(running_loss=running_loss, **locals()))
+    print(log_line.format(running_loss=running_loss, **locals()),flush=True)
     start_t = end_t
 
     #######################################################################
@@ -202,7 +202,7 @@ def main(args):
             #if iter_idx > 100:
             #    break
         gc.enable()
-        return
+        
 
 
 if __name__ == '__main__':
