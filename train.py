@@ -173,8 +173,9 @@ def main(args):
         gc.disable()
         data_time = time.time()
         
-        for local_iter_idx, batch in tqdm.tqdm(batch_iter(dataloader, args)):
+        for local_iter_idx, batch in batch_iter(dataloader, args):
             #print("Data Load",time.time()-data_time)
+            start = time.time()
             #times = [time.time()] 
 
             iter_idx = local_iter_idx + epoch * len(dataloader)
@@ -197,10 +198,9 @@ def main(args):
             #times.append(time.time())
             #for idx,timing in enumerate(["FW","Loss","Backw","Opt","log"]):
                 #print(timing,times[idx+1]-times[idx])
-            data_time = time.time()
+            #data_time = time.time()
 
-            #if iter_idx > 100:
-            #    break
+            print(f"training: {time.time()-start:.4f}")
         gc.enable()
         
 

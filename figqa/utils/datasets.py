@@ -20,21 +20,25 @@ from figqa.utils.sequences import NULL
 
 import sys
 sys.path.append('/workspace/st_vqa_entitygrid/solution/')
-from figureqa import create_bbox_canvas,char_split
+from figureqa import char_split,randomcrop_img_chargrid
 
 def batch_iter(dataloader, args, volatile=False):
     '''Generate appropriately transformed batches.'''
     for idx, batch in enumerate(dataloader):
+        start = time.time()
         for k in batch:
             if not torch.is_tensor(batch[k]):
                 continue
             if args.cuda:
                 # assumed cpu tensors are in pinned memory
                 #batch[k] = batch[k].cuda(async=False)
+                
                 batch[k] = batch[k].cuda(non_blocking=True)
+                
             batch[k] = Variable(batch[k])
             #else:
             #    batch[k] = Variable(batch[k])
+        print(f"cuda: {time.time()-start:.4f}")
         yield idx, batch
 
 def ques_to_tensor(ques, word2ind):
@@ -75,14 +79,15 @@ class FigQADataset(Dataset):
         self.image_idx = np.array(self.qa_pairs['image_idx'])
 
         # image->tensor transform
-        self.transform = transforms.Compose([
-                            transforms.Lambda(self.resize),
-                            transforms.Lambda(self.pad),
-                            transforms.RandomCrop(256, padding=8),
-                            transforms.ToTensor(),
-                        ])
+        #self.transform = transforms.Compose([
+        #                    transforms.Lambda(self.resize),
+        #                    transforms.Lambda(self.pad),
+        #                    transforms.RandomCrop(256, padding=8),
+        #                    transforms.ToTensor(),
+        #                ])
 
-        self.chargrid_transpose = transforms.Compose([
+        self.transf_tensor = transforms.Compose([
+                            #transforms.RandomCrop(256, padding=8),
                             transforms.ToTensor(),
                         ])
 
@@ -122,7 +127,7 @@ class FigQADataset(Dataset):
         return img
 
     def __getitem__(self, index):
-        #start = time.time()
+        start = time.time()
         # question-answer info
         question = self.questions[index]
         answer = self.answers[index]
@@ -134,16 +139,28 @@ class FigQADataset(Dataset):
         #fname = '{}.png'.format(image_idx)
         #path = pth.join(self.dname, self.split, 'png', fname)
         
-        fname = '{}.pt'.format(image_idx)
-        path = pth.join(self.dname, self.split, 'img_tensors', fname)
-        img = torch.load(path)
-        #img = Image.open(path).convert('RGB')
-        #img = self.transform(img)
+        fname = '{}.png'.format(image_idx)
+        path = pth.join(self.dname, self.split, 'transf_png', fname)
+        #fname = "56.png"
+        #path = pth.join(self.dname, "sample_train1", 'transf_png', fname)
+        #img = torch.load(path)
+        img = Image.open(path).convert('RGB')
+
+        #Random Crop and Chargrid
+        img,chargrid = randomcrop_img_chargrid(
+            img,
+            self.vectorizer,
+            self.annotations[str(image_idx)],
+            padding=8)
+
+        img,chargrid = self.transf_tensor(img),self.transf_tensor(chargrid).type(torch.float32)
 
         #Create CharGrid
-        chargrid = create_bbox_canvas(
-           self.vectorizer,self.annotations[str(image_idx)])
-        chargrid = self.chargrid_transpose(chargrid).type(torch.float32)
+        #chargrid = create_bbox_canvas(
+        #   self.vectorizer,self.annotations[str(image_idx)])
+        #chargrid = self.rand_crop_transf(chargrid).type(torch.float32)
+
+        #print(f"load_item: {time.time()-start:.4f}")
         return {
             'img': img,
             'img_path': path,

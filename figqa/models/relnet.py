@@ -3,8 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-
 import figqa.utils.sequences as sequences
+
+import torchvision.transforms as transforms
 
 class RelNet(nn.Module):
 
