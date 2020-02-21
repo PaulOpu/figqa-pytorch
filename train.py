@@ -172,10 +172,16 @@ def main(args):
         # the train loop
         gc.disable()
         data_time = time.time()
-        
+
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        end.record()
         for local_iter_idx, batch in batch_iter(dataloader, args):
+            start.record()
+            torch.cuda.synchronize()
+            #print("Loading: ",end.elapsed_time(start))
             #print("Data Load",time.time()-data_time)
-            start = time.time()
+            
             #times = [time.time()] 
 
             iter_idx = local_iter_idx + epoch * len(dataloader)
@@ -199,8 +205,9 @@ def main(args):
             #for idx,timing in enumerate(["FW","Loss","Backw","Opt","log"]):
                 #print(timing,times[idx+1]-times[idx])
             #data_time = time.time()
-
-            print(f"training: {time.time()-start:.4f}")
+            end.record()
+            torch.cuda.synchronize()
+            #print("Training: ",start.elapsed_time(end))
         gc.enable()
         
 

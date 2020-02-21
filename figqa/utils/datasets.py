@@ -20,12 +20,15 @@ from figqa.utils.sequences import NULL
 
 import sys
 sys.path.append('/workspace/st_vqa_entitygrid/solution/')
-from figureqa import char_split,randomcrop_img_chargrid
+from figureqa import char_split,randomcrop_img_chargrid,randomcrop_img,get_chargrid_bboxes
 
 def batch_iter(dataloader, args, volatile=False):
     '''Generate appropriately transformed batches.'''
+    start = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
     for idx, batch in enumerate(dataloader):
-        start = time.time()
+
+        start.record()
         for k in batch:
             if not torch.is_tensor(batch[k]):
                 continue
@@ -38,7 +41,10 @@ def batch_iter(dataloader, args, volatile=False):
             batch[k] = Variable(batch[k])
             #else:
             #    batch[k] = Variable(batch[k])
-        print(f"cuda: {time.time()-start:.4f}")
+        end.record()
+        torch.cuda.synchronize()
+        #print("Transport: ",start.elapsed_time(end))
+        #print(f"cuda: {time.time()-start:.4f}")
         yield idx, batch
 
 def ques_to_tensor(ques, word2ind):
@@ -127,7 +133,7 @@ class FigQADataset(Dataset):
         return img
 
     def __getitem__(self, index):
-        start = time.time()
+        #start = time.time()
         # question-answer info
         question = self.questions[index]
         answer = self.answers[index]
@@ -147,13 +153,35 @@ class FigQADataset(Dataset):
         img = Image.open(path).convert('RGB')
 
         #Random Crop and Chargrid
-        img,chargrid = randomcrop_img_chargrid(
-            img,
-            self.vectorizer,
-            self.annotations[str(image_idx)],
-            padding=8)
+        # img,chargrid = randomcrop_img_chargrid(
+        #     img,
+        #     self.vectorizer,
+        #     self.annotations[str(image_idx)],
+        #     padding=8)
+        # img,chargrid = self.transf_tensor(img),self.transf_tensor(chargrid).type(torch.float32)
 
-        img,chargrid = self.transf_tensor(img),self.transf_tensor(chargrid).type(torch.float32)
+        #Chargrid on the fly
+        img,x_rand_pad,y_rand_pad = randomcrop_img(img,padding=8)
+
+        n_channels = len(self.vectorizer.vocabulary_)
+        labels = torch.zeros((45,n_channels),dtype=torch.float32)
+        bboxes = torch.zeros((45,4),dtype=torch.int32)
+
+        np_labels, np_bboxes = get_chargrid_bboxes(
+            self.annotations[str(image_idx)],
+            self.vectorizer,
+            x_rand_pad,y_rand_pad,8)
+
+        n_label = np_labels.shape[0]
+        #normalize chargrid
+        label_sum = np.sum(np_labels,1)
+        np_labels = (np_labels / label_sum[:, np.newaxis])
+        #np_labels = np_labels / np.max(np_labels,0)
+
+        labels[:n_label] = torch.tensor(np_labels,dtype=torch.float32)
+        bboxes[:n_label] = torch.tensor(np_bboxes,dtype=torch.int32)
+
+        img = self.transf_tensor(img)
 
         #Create CharGrid
         #chargrid = create_bbox_canvas(
@@ -168,7 +196,10 @@ class FigQADataset(Dataset):
             'question_len': question_len,
             'qtype': qtype,
             'answer': answer,
-            'chargrid':chargrid
+            'n_label': torch.tensor([n_label],dtype=torch.int32),
+            'labels': labels,
+            'bboxes': bboxes,
+            #'chargrid':chargrid
         }
 
     def __len__(self):

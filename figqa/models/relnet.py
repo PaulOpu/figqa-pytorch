@@ -7,6 +7,8 @@ import figqa.utils.sequences as sequences
 
 import torchvision.transforms as transforms
 
+import time
+
 class RelNet(nn.Module):
 
     def __init__(self, model_args):
@@ -73,8 +75,11 @@ class RelNet(nn.Module):
 
             # Chargrid: OCR Embedding
             self.chargrid_net = nn.Sequential(
-                nn.Conv2d(39, 64, kernel_size=3, stride=2, padding=1),
-                nn.BatchNorm2d(64),
+                nn.Conv2d(39, 10, kernel_size=1, stride=1, padding=0),
+                nn.BatchNorm2d(10),
+                act_f,
+                nn.Conv2d(10, img_net_dim, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(img_net_dim),
                 act_f,
                 nn.Conv2d(64, img_net_dim, kernel_size=3, stride=2, padding=1),
                 nn.BatchNorm2d(img_net_dim),
@@ -146,7 +151,8 @@ class RelNet(nn.Module):
     @staticmethod
     def init_parameters(mod):
         if isinstance(mod, nn.Conv2d) or isinstance(mod, nn.Linear):
-            nn.init.kaiming_uniform(mod.weight)
+            #Chargrid: , nonlinearity='relu'
+            nn.init.kaiming_uniform(mod.weight, nonlinearity='relu')
             if mod.bias is not None:
                 nn.init.constant(mod.bias, 0)
 
@@ -204,7 +210,26 @@ class RelNet(nn.Module):
         img = batch['img']
         ques_len = batch['question_len']
         ques_emb = self.qembedding(batch['question'])
-        chargrid = batch['chargrid']
+
+        #Load Chargrid (chargrid on the fly)
+        labels = batch['labels']
+        bboxes = batch['bboxes']
+        n_label = batch["n_label"]
+        #BATCH SIZE
+        chargrid = torch.zeros((labels.shape[0],256,256,39),device=torch.get_device(labels))
+        #create chargrid on the fly
+        #start = time.time()
+        for batch_id in range(labels.shape[0]):
+            for label_id in range(n_label[batch_id].item()):
+                x,y,x2,y2 = bboxes[batch_id,label_id,:]
+                chargrid[batch_id,y:y2,x:x2,:] = labels[batch_id,label_id]
+        #print(f"chargrid: {time.time()-start:.4f}",)
+        chargrid = chargrid.permute(0,3,1,2)
+
+        #Load Chargrid (chargrid created beforehand
+        #chargrid = batch['chargrid']
+
+
         self.qlstm.flatten_parameters()
         ques = sequences.dynamic_rnn(self.qlstm, ques_emb, ques_len)
         # answer using questions only

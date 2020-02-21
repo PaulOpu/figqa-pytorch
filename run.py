@@ -62,8 +62,8 @@ def runcmd(cmd):
 
 #######################################
 # Config
-figureqa_dir = '/workspace/resized_figureqa/'
-figureqa_pre = '/workspace/resized_figureqa/preprocessed'
+figureqa_dir = "/workspace/environment/master-scene-text-vqa/datasets/resized_figureqa"#'/workspace/resized_figureqa/'
+figureqa_pre = "/workspace/environment/master-scene-text-vqa/datasets/resized_figureqa/preprocessed"#'/workspace/resized_figureqa/preprocessed'
 
 #######################################
 # Pre-processing
@@ -77,15 +77,16 @@ runcmd('python /workspace/figqa-pytorch/train.py \
         --figqa-dir {figureqa_dir} \
         --figqa-pre {figureqa_pre} \
         --model rn \
-        --env-name figqa-rn \
+        --env-name figqa-rn-chargrid \
         --ques-num-layers 1 \
         --img-net-dim 64 \
         --rn-g-dim 256 \
         --ques-rnn-hidden-dim 256 \
-        --batch-size 64 \
+        --batch-size 100 \
         --shuffle-train 1 \
         --lr 0.00002 \
-        --workers 4 \
+        --workers 20 \
+        --ngpus 2 \
         --lr-decay 1.0'.format(**locals()))
 
 #######################################
