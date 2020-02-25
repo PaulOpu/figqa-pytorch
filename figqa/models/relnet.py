@@ -81,7 +81,7 @@ class RelNet(nn.Module):
                 nn.Conv2d(10, img_net_dim, kernel_size=3, stride=2, padding=1),
                 nn.BatchNorm2d(img_net_dim),
                 act_f,
-                nn.Conv2d(64, img_net_dim, kernel_size=3, stride=2, padding=1),
+                nn.Conv2d(img_net_dim, img_net_dim, kernel_size=3, stride=2, padding=1),
                 nn.BatchNorm2d(img_net_dim),
                 act_f
             )
@@ -247,7 +247,7 @@ class RelNet(nn.Module):
         # (f and g as in the RN paper)
         assert self.kind == 'rn'
 
-        #TODO: Concat img and chargrid and conv
+        #Chargrid: Concat img and chargrid and conv
         entitygrid = torch.cat([img,chargrid],dim=1)
         entitygrid = self.entitygrid_net(entitygrid)
         context = 0
