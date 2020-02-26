@@ -41,6 +41,10 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
     #Chargrid: Visualize Weight 
     viz.append_data(iter_idx, model.module.decision_weight.item(), 'Decision Weight', 'value')
 
+    chargrid_net1_weights = torch.norm(model.module.chargrid_net[3].weight.view(64,10,9),dim=2)
+    chargrid_net1_weights = chargrid_net1_weights.detach().cpu().numpy()
+    viz.append_boxplot(iter_idx, chargrid_net1_weights.reshape(-1), 'Chargrid Net 2')
+    #torch.norm(model.module.chargrid_net[3].weight.view(64,10,9),dim=2).shape
     # accuracy
     _, pred_idx = torch.max(pred, dim=1)
     correct = (batch['answer'] == pred_idx)
@@ -217,6 +221,6 @@ if __name__ == '__main__':
     def char_split(document):
         return list(document.lower())
 
-    os.system("taskset -p 0xff %d" % os.getpid())
+    #os.system("taskset -p 0xff %d" % os.getpid())
     
     main(figqa.options.parse_arguments())
