@@ -86,16 +86,24 @@ class RelNet(nn.Module):
                 act_f
             )
 
+            #Chargrid: Decision Factor
+            self.decision_weight = torch.nn.Parameter(torch.tensor(0.5))
+            #torch.nn.utils.clip_grad_value_([self.decision_weight],0.1)
+            self.dec_weight_sigm = nn.Sigmoid()
+
             #Chargrid: Img_Net + Chargrid Embedding
             self.entitygrid_net = nn.Sequential(
-                nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
+                nn.Conv2d(128, 128, kernel_size=1, stride=1, padding=0),
                 nn.BatchNorm2d(128),
                 act_f,
                 nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
                 nn.BatchNorm2d(128),
                 act_f,
-                nn.Conv2d(128, img_net_dim, kernel_size=3, stride=2, padding=1),
-                nn.BatchNorm2d(img_net_dim),
+                nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(128),
+                act_f,
+                nn.Conv2d(128, 64, kernel_size=3, stride=2, padding=1),
+                nn.BatchNorm2d(64),
                 act_f,
             )
             img_net_out_dim = 64            
@@ -224,7 +232,7 @@ class RelNet(nn.Module):
                 x,y,x2,y2 = bboxes[batch_id,label_id,:]
                 chargrid[batch_id,y:y2,x:x2,:] = labels[batch_id,label_id]
         #print(f"chargrid: {time.time()-start:.4f}",)
-        chargrid = chargrid.permute(0,3,1,2)
+        chargrid = chargrid.permute(0,3,1,2).contiguous()
 
         #Load Chargrid (chargrid created beforehand
         #chargrid = batch['chargrid']
@@ -238,6 +246,12 @@ class RelNet(nn.Module):
             return F.log_softmax(scores, dim=1)
         img = self.img_net(img)
         chargrid = self.chargrid_net(chargrid)
+
+        #Decision Factor
+        curr_dec_weight = self.dec_weight_sigm(self.decision_weight)
+        chargrid = chargrid * curr_dec_weight
+        img = img * (1-curr_dec_weight)
+
         # answer using questions + images; no relational structure
         if self.kind == 'cnn+lstm':
             ipt = torch.cat([ques, img.view(len(img), -1)], dim=1)

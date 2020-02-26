@@ -2,6 +2,7 @@ import os.path as pth
 import json
 import numpy as np
 import visdom
+import time
 
 class VisdomVisualize():
     def __init__(self, server='localhost', port=8894, env_name='main',
@@ -24,7 +25,7 @@ class VisdomVisualize():
                 if 'port' in config:
                     port = int(config['port'])
         i = 1
-        while pth.exists("/workspace/figqa-pytorch/data/logs/"+str(i)):
+        while pth.exists("/workspace/figqa-pytorch/data/logs/rn"+str(i)):
             i += 1 
         
         self.viz = visdom.Visdom(

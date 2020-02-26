@@ -38,6 +38,9 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
         running_loss = alpha * running_loss + (1 - alpha) * loss.data.item()
     viz.append_data(iter_idx, running_loss, 'Loss', 'running loss')
 
+    #Chargrid: Visualize Weight 
+    viz.append_data(iter_idx, model.module.decision_weight.item(), 'Decision Weight', 'value')
+
     # accuracy
     _, pred_idx = torch.max(pred, dim=1)
     correct = (batch['answer'] == pred_idx)
@@ -188,20 +191,18 @@ def main(args):
 
             # forward + update
             optimizer.zero_grad()
-            
             pred = model(batch)
-            #times.append(time.time())
             loss = criterion(pred, batch['answer'])
-            #times.append(time.time())
-            #print("backprop")
             loss.backward()
-            #times.append(time.time())
             optimizer.step()
-            #times.append(time.time())
+
+            #Chargrid: Gradient Clipping
+            torch.nn.utils.clip_grad_value_([model.module.decision_weight],0.1)
+            
+
             # visualize, log, checkpoint
             #print("visualize")
             log_stuff(**locals())
-            #times.append(time.time())
             #for idx,timing in enumerate(["FW","Loss","Backw","Opt","log"]):
                 #print(timing,times[idx+1]-times[idx])
             #data_time = time.time()
@@ -215,4 +216,7 @@ def main(args):
 if __name__ == '__main__':
     def char_split(document):
         return list(document.lower())
+
+    os.system("taskset -p 0xff %d" % os.getpid())
+    
     main(figqa.options.parse_arguments())
