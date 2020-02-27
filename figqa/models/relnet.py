@@ -87,9 +87,9 @@ class RelNet(nn.Module):
             )
 
             #Chargrid: Decision Factor
-            self.decision_weight = torch.nn.Parameter(torch.tensor(0.5))
+            #self.decision_weight = torch.nn.Parameter(torch.tensor(0.5))
             #torch.nn.utils.clip_grad_value_([self.decision_weight],0.1)
-            self.dec_weight_sigm = nn.Sigmoid()
+            #self.dec_weight_sigm = nn.Sigmoid()
 
             #Chargrid: Img_Net + Chargrid Embedding
             self.entitygrid_net = nn.Sequential(
@@ -224,15 +224,17 @@ class RelNet(nn.Module):
         bboxes = batch['bboxes']
         n_label = batch["n_label"]
         #BATCH SIZE
-        chargrid = torch.zeros((labels.shape[0],256,256,39),device=torch.get_device(labels))
+        #chargrid = torch.zeros((labels.shape[0],256,256,39),device=torch.get_device(labels))
+        chargrid = torch.zeros((labels.shape[0],39,256,256),device=torch.get_device(labels))
         #create chargrid on the fly
-        #start = time.time()
+
         for batch_id in range(labels.shape[0]):
             for label_id in range(n_label[batch_id].item()):
                 x,y,x2,y2 = bboxes[batch_id,label_id,:]
-                chargrid[batch_id,y:y2,x:x2,:] = labels[batch_id,label_id]
+                label_box = labels[batch_id,label_id].repeat((x2-x,y2-y,1)).transpose(2,0)
+                chargrid[batch_id,:,y:y2,x:x2] = label_box
         #print(f"chargrid: {time.time()-start:.4f}",)
-        chargrid = chargrid.permute(0,3,1,2).contiguous()
+        #chargrid = chargrid.permute(0,3,1,2).contiguous()
 
         #Load Chargrid (chargrid created beforehand
         #chargrid = batch['chargrid']
@@ -248,9 +250,11 @@ class RelNet(nn.Module):
         chargrid = self.chargrid_net(chargrid)
 
         #Decision Factor
-        curr_dec_weight = self.dec_weight_sigm(self.decision_weight)
-        chargrid = chargrid * curr_dec_weight
-        img = img * (1-curr_dec_weight)
+        #curr_dec_weight = self.dec_weight_sigm(self.decision_weight)
+        #chargrid = chargrid * curr_dec_weight
+        #img = img * (1-curr_dec_weight)
+
+        #entitygrid = chargrid + img
 
         # answer using questions + images; no relational structure
         if self.kind == 'cnn+lstm':

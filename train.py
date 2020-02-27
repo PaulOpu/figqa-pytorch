@@ -22,6 +22,33 @@ import figqa.utils.visualize
 from figqa.utils.datasets import FigQADataset, batch_iter
 
 
+def chargrid_log(iter_idx,viz,model):
+
+    #Decision Factor
+    #dec_factor = model.module.de
+    #viz.append_data(x, y, key, line_name)
+
+    #CharGrid Net
+    chargrid_net = model.module.chargrid_net
+
+    name = "chargrid"
+    for idx in [0,3,6]:
+        weights = chargrid_net[idx].weight.data.cpu().numpy()
+        gradients = chargrid_net[idx].weight.grad.cpu().numpy()
+        viz.append_histogram(iter_idx, weights.reshape(-1), f"{name}_weights_{idx}")
+        viz.append_histogram(iter_idx, gradients.reshape(-1), f"{name}_gradients_{idx}")
+
+    #EntityGrid Net
+    name = "entitygrid"
+    entitygrid_net = model.module.entitygrid_net
+    for idx in [0,3,6,9]:
+        weights = entitygrid_net[idx].weight.data.cpu().numpy()
+        gradients = entitygrid_net[idx].weight.grad.cpu().numpy()
+        viz.append_histogram(iter_idx, weights.reshape(-1), f"{name}_weights_{idx}")
+        viz.append_histogram(iter_idx, gradients.reshape(-1), f"{name}_gradients_{idx}")
+
+
+
 def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
               criterion, epoch, optimizer, running_accs, viz, args,
               **kwargs):
@@ -39,12 +66,8 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
     viz.append_data(iter_idx, running_loss, 'Loss', 'running loss')
 
     #Chargrid: Visualize Weight 
-    viz.append_data(iter_idx, model.module.decision_weight.item(), 'Decision Weight', 'value')
+    chargrid_log(iter_idx,viz,model)
 
-    chargrid_net1_weights = torch.norm(model.module.chargrid_net[3].weight.view(64,10,9),dim=2)
-    chargrid_net1_weights = chargrid_net1_weights.detach().cpu().numpy()
-    viz.append_boxplot(iter_idx, chargrid_net1_weights.reshape(-1), 'Chargrid Net 2')
-    #torch.norm(model.module.chargrid_net[3].weight.view(64,10,9),dim=2).shape
     # accuracy
     _, pred_idx = torch.max(pred, dim=1)
     correct = (batch['answer'] == pred_idx)
@@ -201,7 +224,7 @@ def main(args):
             optimizer.step()
 
             #Chargrid: Gradient Clipping
-            torch.nn.utils.clip_grad_value_([model.module.decision_weight],0.1)
+            #torch.nn.utils.clip_grad_value_([model.module.decision_weight],0.1)
             
 
             # visualize, log, checkpoint

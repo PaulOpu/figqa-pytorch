@@ -44,7 +44,7 @@ class VisdomVisualize():
         )
         self.wins = {}
 
-        #current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         self.tensorboard_writer = SummaryWriter(
             log_dir=f"/workspace/figqa-pytorch/data/logs/{env_name}_{current_time}",
             comment=env_name)
@@ -97,7 +97,7 @@ class VisdomVisualize():
                 )
             )
 
-    def append_boxplot(self, x, y, chart):
+    def append_histogram(self, x, y, chart):
         '''
 
         Arguments:
