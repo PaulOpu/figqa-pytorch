@@ -209,10 +209,6 @@ def main(args):
         for local_iter_idx, batch in batch_iter(dataloader, args):
             start.record()
             torch.cuda.synchronize()
-            #print("Loading: ",end.elapsed_time(start))
-            #print("Data Load",time.time()-data_time)
-            
-            #times = [time.time()] 
 
             iter_idx = local_iter_idx + epoch * len(dataloader)
 
