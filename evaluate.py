@@ -50,7 +50,7 @@ def main(args):
         accs.append(acc)
         for qtype, meta in enumerate(utils.QTYPE_ID_TO_META):
             qtype_mask = (batch['qtype'] == qtype)
-            if qtype_mask.sum().data[0] == 0:
+            if qtype_mask.sum().data.item() == 0:
                 continue
             acc = correct[qtype_mask].cpu().data.numpy()
             accs_by_qtype[qtype].append(acc)
@@ -80,4 +80,6 @@ def main(args):
 
 
 if __name__ == '__main__':
+    def char_split(document):
+        return list(document.lower())
     main(figqa.options.parse_arguments())

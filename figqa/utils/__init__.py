@@ -31,6 +31,7 @@ def _load_state(target_model, source_state_dict):
             super(DPWrapper, self).__init__()
             self.module = module
     try:
+        source_state_dict = {key[7:]:source_state_dict[key] for key in source_state_dict.keys()}
         target_model.load_state_dict(source_state_dict)
     # if a DP wrapper then state dict keys are prefixed with 'module.'
     except KeyError:

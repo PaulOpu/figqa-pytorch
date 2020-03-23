@@ -73,34 +73,35 @@ figureqa_pre = "/workspace/environment/master-scene-text-vqa/datasets/resized_fi
 
 #######################################
 # Train
-runcmd('python /workspace/figqa-pytorch/train.py \
-        --figqa-dir {figureqa_dir} \
-        --figqa-pre {figureqa_pre} \
-        --model rn \
-        --env-name figqa-rn-chargrid \
-        --ques-num-layers 1 \
-        --img-net-dim 64 \
-        --rn-g-dim 256 \
-        --ques-rnn-hidden-dim 256 \
-        --batch-size 100 \
-        --shuffle-train 1 \
-        --lr 0.00002 \
-        --workers 20 \
-        --ngpus 2 \
-        --lr-decay 1.0'.format(**locals()))
+# runcmd('python /workspace/figqa-pytorch/train.py \
+#         --figqa-dir {figureqa_dir} \
+#         --figqa-pre {figureqa_pre} \
+#         --model rn \
+#         --env-name figqa-rn-chargrid \
+#         --ques-num-layers 1 \
+#         --img-net-dim 64 \
+#         --rn-g-dim 256 \
+#         --ques-rnn-hidden-dim 256 \
+#         --batch-size 100 \
+#         --shuffle-train 1 \
+#         --lr 0.00002 \
+#         --workers 20 \
+#         --ngpus 2 \
+#         --lr-decay 1.0'.format(**locals()))
 
 #######################################
 # Evaluate
-# checkpoint = 'data/checkpoints/<time>/model_ep<epoch>.pt'
-# short_name = 'rn'
-# for split in ['train1', 'validation1', 'validation2']:
-#    runcmd('python evaluate.py \
-#            --val-split {split} \
-#            --figqa-dir {figureqa_dir} \
-#            --figqa-pre {figureqa_pre} \
-#            --start-from {checkpoint} \
-#            --result-name {short_name} \
-#            --batch-size 500'.format(**locals()))
+checkpoint = 'data/checkpoints/20-Feb-20-21:09:14-Thu_2535995/model_ep153.pt'
+short_name = 'rn_chargrid_baseline'
+#for split in ['train1', 'validation1', 'validation2']:
+for split in ['validation1', 'validation2']:
+   runcmd('python evaluate.py \
+           --val-split {split} \
+           --figqa-dir {figureqa_dir} \
+           --figqa-pre {figureqa_pre} \
+           --start-from {checkpoint} \
+           --result-name {short_name} \
+           --batch-size 100'.format(**locals()))
 
 # visualize
 #runcmd('python examples.py \
