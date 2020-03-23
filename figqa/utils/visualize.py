@@ -2,6 +2,11 @@ import os.path as pth
 import json
 import numpy as np
 import visdom
+import time
+import datetime
+
+from torch.utils.tensorboard import SummaryWriter
+
 
 class VisdomVisualize():
     def __init__(self, server='localhost', port=8894, env_name='main',
@@ -24,7 +29,7 @@ class VisdomVisualize():
                 if 'port' in config:
                     port = int(config['port'])
         i = 1
-        while pth.exists("/workspace/figqa-pytorch/data/logs/"+str(i)):
+        while pth.exists("/workspace/figqa-pytorch/data/logs/rn"+str(i)):
             i += 1 
         
         self.viz = visdom.Visdom(
@@ -38,6 +43,11 @@ class VisdomVisualize():
             #use_incoming_socket=True
         )
         self.wins = {}
+
+        current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        self.tensorboard_writer = SummaryWriter(
+            log_dir=f"/workspace/figqa-pytorch/data/logs/{env_name}_{current_time}",
+            comment=env_name)
 
     @property
     def env(self):
@@ -86,3 +96,38 @@ class VisdomVisualize():
                     legend=[line_name]
                 )
             )
+
+    def append_histogram(self, x, y, chart):
+        '''
+
+        Arguments:
+            x: 
+            y: 
+            chart:
+        '''
+        self.tensorboard_writer.add_histogram(chart, y, x)
+        self.tensorboard_writer.close()  
+
+
+        """ if key in self.wins.keys():
+            self.viz.boxplot(
+                X=np.array([y]),
+                win=self.wins[key],
+                opts=dict(legend=[x]),
+                update="append"
+            )
+        else:
+            self.wins[key] = self.viz.boxplot(
+                X=y,
+                opts=dict(
+                    xlabel=xlabel,
+                    ylabel=key,
+                    ytype=ytype,
+                    title=key,
+                    marginleft=30,
+                    marginright=30,
+                    marginbottom=30,
+                    margintop=30,
+                    legend=[x]
+                )
+            ) """

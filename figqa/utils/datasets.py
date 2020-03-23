@@ -164,8 +164,11 @@ class FigQADataset(Dataset):
         img,x_rand_pad,y_rand_pad = randomcrop_img(img,padding=8)
 
         n_channels = len(self.vectorizer.vocabulary_)
-        labels = torch.zeros((45,n_channels),dtype=torch.float32)
-        bboxes = torch.zeros((45,4),dtype=torch.int32)
+
+        #labels = torch.zeros((45,n_channels),dtype=torch.float32)
+        #bboxes = torch.zeros((45,4),dtype=torch.int32)
+        labels = np.zeros((45,n_channels),dtype=np.float32)
+        bboxes = np.zeros((45,4),dtype=np.int32)
 
         np_labels, np_bboxes = get_chargrid_bboxes(
             self.annotations[str(image_idx)],
@@ -176,10 +179,12 @@ class FigQADataset(Dataset):
         #normalize chargrid
         label_sum = np.sum(np_labels,1)
         np_labels = (np_labels / label_sum[:, np.newaxis])
-        #np_labels = np_labels / np.max(np_labels,0)
 
-        labels[:n_label] = torch.tensor(np_labels,dtype=torch.float32)
-        bboxes[:n_label] = torch.tensor(np_bboxes,dtype=torch.int32)
+        #Change from pytorch tensors to numpy
+        #labels[:n_label] = torch.tensor(np_labels,dtype=torch.float32)
+        #bboxes[:n_label] = torch.tensor(np_bboxes,dtype=torch.int32)
+        labels[:n_label] = np_labels
+        bboxes[:n_label] = np_bboxes
 
         img = self.transf_tensor(img)
 
@@ -196,7 +201,8 @@ class FigQADataset(Dataset):
             'question_len': question_len,
             'qtype': qtype,
             'answer': answer,
-            'n_label': torch.tensor([n_label],dtype=torch.int32),
+            #'n_label': torch.tensor([n_label],dtype=torch.int32),
+            'n_label': np.array([n_label]).astype(np.int32),
             'labels': labels,
             'bboxes': bboxes,
             #'chargrid':chargrid

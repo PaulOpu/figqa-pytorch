@@ -22,6 +22,33 @@ import figqa.utils.visualize
 from figqa.utils.datasets import FigQADataset, batch_iter
 
 
+def chargrid_log(iter_idx,viz,model):
+
+    #Decision Factor
+    #dec_factor = model.module.de
+    #viz.append_data(x, y, key, line_name)
+
+    #CharGrid Net
+    chargrid_net = model.module.chargrid_net
+
+    name = "chargrid"
+    for idx in [0,3,6]:
+        weights = chargrid_net[idx].weight.data.cpu().numpy()
+        gradients = chargrid_net[idx].weight.grad.cpu().numpy()
+        viz.append_histogram(iter_idx, weights.reshape(-1), f"{name}_weights_{idx}")
+        viz.append_histogram(iter_idx, gradients.reshape(-1), f"{name}_gradients_{idx}")
+
+    #EntityGrid Net
+    name = "entitygrid"
+    entitygrid_net = model.module.entitygrid_net
+    for idx in [0,3,6,9]:
+        weights = entitygrid_net[idx].weight.data.cpu().numpy()
+        gradients = entitygrid_net[idx].weight.grad.cpu().numpy()
+        viz.append_histogram(iter_idx, weights.reshape(-1), f"{name}_weights_{idx}")
+        viz.append_histogram(iter_idx, gradients.reshape(-1), f"{name}_gradients_{idx}")
+
+
+
 def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
               criterion, epoch, optimizer, running_accs, viz, args,
               **kwargs):
@@ -37,6 +64,9 @@ def log_stuff(iter_idx, loss, batch, pred, val_dataloader, model,
     else:
         running_loss = alpha * running_loss + (1 - alpha) * loss.data.item()
     viz.append_data(iter_idx, running_loss, 'Loss', 'running loss')
+
+    #Chargrid: Visualize Weight 
+    chargrid_log(iter_idx,viz,model)
 
     # accuracy
     _, pred_idx = torch.max(pred, dim=1)
@@ -179,29 +209,23 @@ def main(args):
         for local_iter_idx, batch in batch_iter(dataloader, args):
             start.record()
             torch.cuda.synchronize()
-            #print("Loading: ",end.elapsed_time(start))
-            #print("Data Load",time.time()-data_time)
-            
-            #times = [time.time()] 
 
             iter_idx = local_iter_idx + epoch * len(dataloader)
 
             # forward + update
             optimizer.zero_grad()
-            
             pred = model(batch)
-            #times.append(time.time())
             loss = criterion(pred, batch['answer'])
-            #times.append(time.time())
-            #print("backprop")
             loss.backward()
-            #times.append(time.time())
             optimizer.step()
-            #times.append(time.time())
+
+            #Chargrid: Gradient Clipping
+            #torch.nn.utils.clip_grad_value_([model.module.decision_weight],0.1)
+            
+
             # visualize, log, checkpoint
             #print("visualize")
             log_stuff(**locals())
-            #times.append(time.time())
             #for idx,timing in enumerate(["FW","Loss","Backw","Opt","log"]):
                 #print(timing,times[idx+1]-times[idx])
             #data_time = time.time()
@@ -215,4 +239,7 @@ def main(args):
 if __name__ == '__main__':
     def char_split(document):
         return list(document.lower())
+
+    #os.system("taskset -p 0xff %d" % os.getpid())
+    
     main(figqa.options.parse_arguments())
